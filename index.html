@@ -355,7 +355,7 @@ function setSession(idToken,refreshToken,expiresIn,email){
 async function signIn(email,pw){
   await ensureKey();
   const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,returnSecureToken:true})});
-  const j=await r.json(); if(!r.ok){ if(/API key/i.test(JSON.stringify(j.error||''))){API_KEY='';try{localStorage.removeItem('gc_api_key')}catch(e){}; throw new Error('Firebase Web API key was rejected. Reload and paste the correct key.')} throw new Error(authErr(j.error&&j.error.message)) }
+  const j=await r.json(); if(!r.ok){ const ej=JSON.stringify(j.error||''); if(/CONFIGURATION_NOT_FOUND/.test(ej)){API_KEY='';try{localStorage.removeItem('gc_api_key')}catch(e){}; throw new Error('This API key is from a Google Cloud project that has no Firebase Authentication. Reload and paste the Web API key of your Firebase project (Firebase console > Project settings > General).')} if(/API key/i.test(ej)){API_KEY='';try{localStorage.removeItem('gc_api_key')}catch(e){}; throw new Error('Firebase Web API key was rejected. Reload and paste the correct key.')} throw new Error(authErr(j.error&&j.error.message)) }
   setSession(j.idToken,j.refreshToken,j.expiresIn,j.email||email);
 }
 async function doRefresh(){
