@@ -17,6 +17,7 @@ h1{font-size:1.3rem;color:var(--g);margin:0 0 4px}
 .warn{background:#fde8e6;border:2px solid var(--bad);border-radius:6px;padding:8px;margin:8px 0 12px;font-size:.9rem}
 .box{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:12px}
 label{display:block;font-size:.85rem;margin:8px 0 4px}
+select{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;font:inherit;background:#fff}
 input,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;font:inherit;background:#fff}
 textarea{min-height:110px;word-break:break-all;font-family:monospace;font-size:.8rem}
 button{background:var(--g);color:#fff;border:0;padding:10px 16px;border-radius:4px;font-size:1rem;cursor:pointer;margin:8px 8px 0 0}
@@ -85,6 +86,26 @@ body:not(.authed) .app{display:none}
   <div id="skpubw" style="display:none"><label>Public key (give this to the app; it is safe to share)</label>
   <textarea id="skpub" readonly rows="4"></textarea></div>
 </div>
+<dialog id="dlg-ai" style="border:1px solid var(--line);border-radius:8px;padding:0;width:94%;max-width:440px">
+  <div style="background:var(--g);color:#fff;padding:10px 14px;font-weight:700" id="ai-t">AI key</div>
+  <div style="padding:12px 14px">
+    <p style="margin:0 0 6px;font-size:.85rem">This key is used by that customer's app to read sheet photos. Each customer has a separate key.</p>
+    <label for="ai-p">AI provider</label>
+    <select id="ai-p"><option value="gemini">Google Gemini</option><option value="openai">OpenAI (GPT)</option><option value="anthropic">Anthropic (Claude)</option></select>
+    <label for="ai-k">API key</label>
+    <input id="ai-k" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza... / sk-... / sk-ant-...">
+    <label for="ai-m">Model (optional, leave empty for default)</label>
+    <input id="ai-m" type="text" autocomplete="off" autocapitalize="off" placeholder="e.g. gemini-3.8-flash / gpt-4o">
+    <div id="ai-use" style="font-size:.85rem;margin-top:6px;color:#164f33;font-weight:700"></div>
+    <div id="ai-msg" role="status" style="min-height:1.2em;margin-top:6px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+      <button type="button" id="ai-save" style="margin:0">Save</button>
+      <button type="button" id="ai-reset" class="alt" style="margin:0">Reset count</button>
+      <button type="button" id="ai-rm" class="alt" style="margin:0;color:#b3261e;border-color:#b3261e">Remove key</button>
+      <button type="button" id="ai-x" class="alt" style="margin:0">Close</button>
+    </div>
+  </div>
+</dialog>
 <script>
 let PRV=null;   // signing key is loaded from Firebase after admin login, never stored in this file
 const LOG='gc_issued_v1';
@@ -214,6 +235,32 @@ async function setBlockEmail(email,ids,flag){
     await Promise.all(ids.map(id=>adm('/devices/'+id,'PATCH',{blocked:flag,blockedTs:Date.now()})));
   }catch(e){fail(e)}
 }
+const PROVN={gemini:'Gemini',openai:'OpenAI',anthropic:'Claude'};
+let AI_ID='';
+async function aiPatch(id,o){try{await adm('/devices/'+id,'PATCH',o);return true}catch(e){fail(e);return false}}
+function openAi(id){
+  const v=DEV[id]||{}; AI_ID=id;
+  q('ai-t').textContent='AI key for '+id+(v.name?' ('+v.name+')':'');
+  q('ai-p').value=v.apiProv||'gemini'; q('ai-k').value=v.apiKey||''; q('ai-m').value=v.apiModel||'';
+  q('ai-rm').style.display=v.apiKey?'inline-block':'none'; q('ai-msg').textContent='';
+  q('ai-reset').style.display=v.apiKey?'inline-block':'none';
+  q('ai-use').textContent=v.apiKey?('Used '+(v.apiUses||0)+' time'+((v.apiUses||0)===1?'':'s')+(v.apiLast?' (last: '+dmy(v.apiLast)+')':'')):'';
+  q('dlg-ai').showModal();
+}
+q('ai-x').onclick=()=>q('dlg-ai').close();
+q('ai-save').onclick=async()=>{
+  const k=q('ai-k').value.trim().replace(/\s+/g,'');
+  if(k.length<10){q('ai-msg').innerHTML='<span class="err">Paste the full API key.</span>';return}
+  if(await aiPatch(AI_ID,{apiProv:q('ai-p').value,apiKey:k,apiModel:q('ai-m').value.trim()||null,apiOn:true,apiTs:Date.now()})) q('dlg-ai').close();
+};
+q('ai-reset').onclick=async()=>{
+  if(!confirm('Reset the usage count of '+AI_ID+' to 0?'))return;
+  if(await aiPatch(AI_ID,{apiUses:0,apiLast:null})) q('dlg-ai').close();
+};
+q('ai-rm').onclick=async()=>{
+  if(!confirm('Remove the AI key of '+AI_ID+'? Photo reading stops on that device.'))return;
+  if(await aiPatch(AI_ID,{apiProv:null,apiKey:null,apiModel:null,apiOn:null,apiTs:null,apiUses:null,apiLast:null})) q('dlg-ai').close();
+};
 function mkBtn(txt,fn,color){
   const b=document.createElement('button');b.type='button';b.textContent=txt;b.className='alt';b.style.margin='2px 4px 2px 0';b.style.padding='6px 10px';b.style.fontSize='.85rem';
   if(color){b.style.color=color;b.style.borderColor=color}
@@ -259,6 +306,8 @@ function drawDevices(){
       if(v.key&&!v.active) st+='<br><small>key sent, waiting</small>';
       const sk=v.lastKey||v.key;
       if(sk) st+='<br><small style="color:#1f6b45">&#128273; key saved'+((v.lastKeyTs||v.keyTs)?' ('+dmy(v.lastKeyTs||v.keyTs)+')':'')+'</small>';
+      if(v.apiKey){const on=v.apiOn!==false; st+='<br><small style="color:'+(on?'#1f6b45':'#b3261e')+'">&#129302; AI key '+esc(PROVN[v.apiProv]||v.apiProv||'')+' ...'+esc(String(v.apiKey).slice(-4))+(on?' (active)':' (STOPPED)')+'<br>Used <b>'+(v.apiUses||0)+'</b> time'+((v.apiUses||0)===1?'':'s')+(v.apiLast?', last '+dmy(v.apiLast):'')+'</small>'}
+      st+='<br><small style="color:'+(v.pasteOn===true?'#1f6b45':'#777')+'">&#128203; Paste sizes: '+(v.pasteOn===true?'ON':'blocked')+'</small>';
       if(v.requested&&!v.active) tr.style.background='#fde8e6';
       if(v.blocked){tr.style.background='#e6e6e6';tr.style.color='#555';st='<span style="color:#fff;background:#b3261e;padding:1px 6px;border-radius:4px;font-weight:700">BLOCKED</span>'}
       const isNew=ids.length>1&&id===newest&&(Date.now()-born(id))<14*86400000;
@@ -270,6 +319,9 @@ function drawDevices(){
         td.appendChild(mkBtn('Copy key',async()=>{try{await navigator.clipboard.writeText(sk);alert('Key copied for '+id)}catch(e){q('out').value=sk;window.scrollTo({top:0,behavior:'smooth'});alert('Key shown in the Activation key box. Select and copy it.')}},'#1f6b45'));
         td.appendChild(mkBtn('WhatsApp',()=>waSend(sk),'#1f6b45'));
       }
+      td.appendChild(mkBtn(v.pasteOn===true?'Paste: ON':'Paste: OFF',()=>aiPatch(id,{pasteOn:v.pasteOn!==true,pasteTs:Date.now()}),v.pasteOn===true?'#1f6b45':'#b3261e'));
+      td.appendChild(mkBtn(v.apiKey?'AI key':'+ AI key',()=>openAi(id),'#1f6b45'));
+      if(v.apiKey) td.appendChild(mkBtn(v.apiOn===false?'Resume AI':'Stop AI',()=>aiPatch(id,{apiOn:v.apiOn===false,apiTs:Date.now()}),v.apiOn===false?'#1f6b45':'#b3261e'));
       td.appendChild(mkBtn(v.blocked?'Unblock':'Block',()=>{
         if(!v.blocked&&!confirm('Block device '+id+(v.name?' ('+v.name+')':'')+'? The app on that device will stop working.'))return;
         setBlockDev(id,!v.blocked);
