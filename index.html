@@ -25,6 +25,25 @@ button.alt{background:#fff;color:var(--g);border:2px solid var(--g)}
 .row{display:flex;gap:8px}.row>div{flex:1}
 table{width:100%;border-collapse:collapse;font-size:.85rem}th,td{border-bottom:1px solid var(--line);padding:4px;text-align:left}
 #msg{min-height:1.2em;margin-top:6px;font-size:.9rem}.err{color:var(--bad)}
+/* equal-size buttons (phone and desktop) */
+.btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;margin-top:8px}
+.btns.wide{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.btns button,.dbtns button,#presets button,#gen{width:100%;min-height:40px;margin:0!important;padding:6px 8px!important;font-size:.88rem!important;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15;white-space:normal}
+.dbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:8px}
+#presets{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px!important}
+/* devices: one card per device, same on phone and desktop */
+.devt,.devt tbody{display:block;width:100%}
+.devt thead{display:none}
+.devt tr{display:block}
+.devt tr.gh>td{display:block;padding:10px 8px;border-bottom:0}
+.devt tr.dv{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"id id" "name seen" "status status" "trial trial" "acts acts";gap:6px 12px;border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px;background:#fff}
+.devt tr.dv>td{display:block;border:0;padding:0;min-width:0;overflow-wrap:anywhere}
+.devt tr.dv>td::before{content:attr(data-l);display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:#6a7a72;margin-bottom:1px}
+.devt tr.dv>td:nth-child(1){grid-area:id}.devt tr.dv>td:nth-child(2){grid-area:name}.devt tr.dv>td:nth-child(5){grid-area:seen}
+.devt tr.dv>td:nth-child(3){grid-area:status}.devt tr.dv>td:nth-child(4){grid-area:trial}
+.devt tr.dv>td.acts{grid-area:acts;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.devt tr.dv>td.acts::before{display:none}
+.devt tr.dv>td:nth-child(2):empty,.devt tr.dv>td:nth-child(2):empty::before{display:none}
 #login{position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,var(--g),var(--d));display:flex;align-items:center;justify-content:center;padding:20px}
 #login .lb{background:#fff;border-radius:14px;padding:24px 20px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
 #login h2{margin:0 0 4px;color:var(--d);font-size:1.2rem}
@@ -45,13 +64,13 @@ body:not(.authed) .app{display:none}
 <div class="app">
 <h1>Activation Key Generator</h1>
 <div style="font-size:.85rem;margin-bottom:6px">Logged in as <b id="who"></b> <button type="button" id="logout" class="alt" style="padding:4px 10px;font-size:.85rem;margin:0 0 0 6px">Log out</button></div>
-<div class="warn"><strong>PRIVATE - for the developer only.</strong> This file contains the signing key. Never send it to a customer or upload it anywhere. Customers only get the generated key text.</div>
+<div class="warn"><strong>PRIVATE - for the developer only.</strong> The signing key is kept in your Firebase (admin login only), not in this file. Never share your admin login. Customers only get the generated key text.</div>
 <div class="box">
   <label for="u">User / company name</label><input id="u" placeholder="e.g. Ravani Timber" autocomplete="off">
   <label for="d">Device ID (optional - from the user's Activation key screen)</label><input id="d" placeholder="e.g. K7M2-QX9P" autocomplete="off" style="text-transform:uppercase">
   <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="push" checked style="width:auto"> Also send the key to that device through Firebase (activates automatically)</label>
   <label>Validity</label>
-  <div id="presets" style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px">
+  <div id="presets" style="margin:2px 0 6px">
     <button type="button" class="alt pz" data-p="d15">15 days</button>
     <button type="button" class="alt pz" data-p="m1">1 month</button>
     <button type="button" class="alt pz" data-p="m6">6 months</button>
@@ -67,7 +86,7 @@ body:not(.authed) .app{display:none}
   <button id="gen" type="button">Generate key</button>
   <div id="msg" role="status"></div>
   <label for="out">Activation key</label><textarea id="out" readonly></textarea>
-  <button id="copy" type="button" class="alt">Copy</button><button id="wa" type="button" class="alt">Send on WhatsApp</button>
+  <div class="dbtns"><button id="copy" type="button" class="alt">Copy</button><button id="wa" type="button" class="alt">Send on WhatsApp</button></div>
 </div>
 <div class="box">
   <strong>Devices (live from Firebase)</strong> <span id="live" style="font-size:.8rem;color:#5a6b63">connecting...</span>
@@ -75,7 +94,7 @@ body:not(.authed) .app{display:none}
   <div style="display:flex;gap:8px"><input id="dburl" type="text" autocomplete="off" placeholder="https://...firebasedatabase.app"><button type="button" id="dbsave" style="margin:0;white-space:nowrap">Save &amp; connect</button></div>
   <div id="dsum" style="margin:6px 0;font-size:.85rem"></div>
   <input id="dfilter" type="text" autocomplete="off" placeholder="Search email, name or Device ID" style="margin:0 0 8px">
-  <div style="overflow-x:auto"><table><thead><tr><th>Device ID</th><th>Name</th><th>Status</th><th>Trial</th><th>Last seen</th><th></th></tr></thead><tbody id="dev"></tbody></table></div>
+  <div><table class="devt"><thead><tr><th>Device ID</th><th>Name</th><th>Status</th><th>Trial</th><th>Last seen</th><th></th></tr></thead><tbody id="dev"></tbody></table></div>
 </div>
 <div class="box"><strong>Issued keys (this device)</strong>
   <table><thead><tr><th>ID</th><th>User</th><th>Device</th><th>Till</th><th></th></tr></thead><tbody id="log"></tbody></table>
@@ -99,7 +118,7 @@ body:not(.authed) .app{display:none}
     <div id="ai-hint" style="font-size:.8rem;color:#555;margin-top:4px"></div>
     <div id="ai-use" style="font-size:.85rem;margin-top:6px;color:#164f33;font-weight:700"></div>
     <div id="ai-msg" role="status" style="min-height:1.2em;margin-top:6px"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+    <div class="dbtns">
       <button type="button" id="ai-save" style="margin:0">Save</button>
       <button type="button" id="ai-reset" class="alt" style="margin:0">Reset count</button>
       <button type="button" id="ai-rm" class="alt" style="margin:0;color:#b3261e;border-color:#b3261e">Remove key</button>
@@ -119,7 +138,7 @@ body:not(.authed) .app{display:none}
     <label for="sy-a">Auth token (optional)</label>
     <input id="sy-a" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
     <div id="sy-msg" role="status" style="min-height:1.2em;margin-top:6px"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+    <div class="dbtns">
       <button type="button" id="sy-save" style="margin:0">Save</button>
       <button type="button" id="sy-rm" class="alt" style="margin:0;color:#b3261e;border-color:#b3261e">Remove</button>
       <button type="button" id="sy-x" class="alt" style="margin:0">Close</button>
@@ -321,7 +340,7 @@ q('ai-rm').onclick=async()=>{
   if(await aiPatch(AI_ID,{apiProv:null,apiKey:null,apiModel:null,apiOn:null,apiTs:null,apiUses:null,apiLast:null})) q('dlg-ai').close();
 };
 function mkBtn(txt,fn,color){
-  const b=document.createElement('button');b.type='button';b.textContent=txt;b.className='alt';b.style.margin='2px 4px 2px 0';b.style.padding='6px 10px';b.style.fontSize='.85rem';
+  const b=document.createElement('button');b.type='button';b.textContent=txt;b.className='alt';
   if(color){b.style.color=color;b.style.borderColor=color}
   b.onclick=fn;return b;
 }
@@ -348,16 +367,17 @@ function drawDevices(){
     const ids=groups[em].slice().sort((a,b)=>born(a)-born(b));
     const newest=ids[ids.length-1];
     const eblk=!!(EM[emailKey(em)]&&EM[emailKey(em)].blocked), allBlk=ids.every(id=>DEV[id].blocked)||eblk;
-    const gh=document.createElement('tr');
+    const gh=document.createElement('tr'); gh.className='gh';
     const gtd=document.createElement('td');gtd.colSpan=6;
     gtd.style.cssText='background:#e4f1ea;border-top:2px solid #1f6b45;padding:8px 6px';
     gtd.innerHTML='<b>'+(em?esc(em):'(email not entered yet)')+'</b> &nbsp;<span style="'+(ids.length>1&&em?'color:#fff;background:#d97706;padding:1px 7px;border-radius:10px;font-weight:700':'color:#5a6b63')+'">'+ids.length+' ID'+(ids.length===1?'':'s')+(ids.length>1&&em?' &#9888;':'')+'</span>'+(eblk?' &nbsp;<span style="color:#fff;background:#b3261e;padding:1px 7px;border-radius:10px;font-weight:700">EMAIL BLOCKED</span>':'')+'<br>';
     if(ids.length>1&&em){const n=document.createElement('div');n.style.cssText='font-size:.8rem;color:#92400e;margin:4px 0';n.textContent='This email has '+ids.length+' device IDs (customer changed phone/browser or cleared data). Keep or delete the old ones below.';gtd.appendChild(n)}
-    gtd.appendChild(mkBtn(allBlk?'Unblock email':'Block email (all IDs)',()=>{
+    const gb=document.createElement('div'); gb.className='btns wide'; gtd.appendChild(gb);
+    gb.appendChild(mkBtn(allBlk?'Unblock email':'Block email (all IDs)',()=>{
       if(!allBlk&&!confirm('Block '+(em||'these devices')+' and all '+ids.length+' ID(s)? The app stops working on all of them.'))return;
       setBlockEmail(em,ids,!allBlk);
     },allBlk?'':'#b3261e'));
-    if(ids.some(id=>!DEV[id].active)) gtd.appendChild(mkBtn('Extend days (all)',()=>askExtend(ids.filter(id=>!DEV[id].active),em||'these devices')));
+    if(ids.some(id=>!DEV[id].active)) gb.appendChild(mkBtn('Extend days (all)',()=>askExtend(ids.filter(id=>!DEV[id].active),em||'these devices')));
     gh.appendChild(gtd);t.appendChild(gh);
     ids.forEach((id,ix)=>{
       const v=DEV[id], tr=document.createElement('tr');
@@ -373,28 +393,29 @@ function drawDevices(){
       if(v.blocked){tr.style.background='#e6e6e6';tr.style.color='#555';st='<span style="color:#fff;background:#b3261e;padding:1px 6px;border-radius:4px;font-weight:700">BLOCKED</span>'}
       const isNew=ids.length>1&&id===newest&&(Date.now()-born(id))<14*86400000;
       tr.innerHTML='<td><b>'+esc(id)+'</b><br><small style="color:#1f6b45;font-weight:700">Device '+(ix+1)+'</small>'+(isNew?' <small style="color:#fff;background:#d97706;padding:0 5px;border-radius:8px">NEW</small>':'')+'<br><small>since '+(born(id)?dmy(born(id)):'?')+'</small></td><td>'+esc(v.name||'')+'</td><td>'+st+'</td><td>'+trialCell(v)+(v.extraDays?'<br><small>('+(v.extraDays>0?'+':'')+v.extraDays+' extra days)</small>':'')+'</td><td>'+esc(ago(v.lastSeen))+'</td><td></td>';
-      const td=tr.lastChild;
-      td.style.minWidth='130px';
-      td.appendChild(mkBtn('Use',()=>{q('d').value=id;q('u').value=v.name||em||q('u').value;window.scrollTo({top:0,behavior:'smooth'});q('u').focus()}));
+      tr.className='dv'; ['Device ID','Name','Status','Trial','Last seen',''].forEach((l,i)=>{tr.children[i].dataset.l=l});
+      const td=tr.lastChild; td.className='acts';
+      const bx=document.createElement('div'); bx.className='btns'; td.appendChild(bx);
+      bx.appendChild(mkBtn('Use',()=>{q('d').value=id;q('u').value=v.name||em||q('u').value;window.scrollTo({top:0,behavior:'smooth'});q('u').focus()}));
       if(sk){
-        td.appendChild(mkBtn('Copy key',async()=>{try{await navigator.clipboard.writeText(sk);alert('Key copied for '+id)}catch(e){q('out').value=sk;window.scrollTo({top:0,behavior:'smooth'});alert('Key shown in the Activation key box. Select and copy it.')}},'#1f6b45'));
-        td.appendChild(mkBtn('WhatsApp',()=>waSend(sk),'#1f6b45'));
+        bx.appendChild(mkBtn('Copy key',async()=>{try{await navigator.clipboard.writeText(sk);alert('Key copied for '+id)}catch(e){q('out').value=sk;window.scrollTo({top:0,behavior:'smooth'});alert('Key shown in the Activation key box. Select and copy it.')}},'#1f6b45'));
+        bx.appendChild(mkBtn('WhatsApp',()=>waSend(sk),'#1f6b45'));
       }
-      td.appendChild(mkBtn(v.syncUrl?'Sync':'+ Sync',()=>openSync(id),'#1f6b45'));
-      if(v.syncUrl) td.appendChild(mkBtn(v.syncOn===false?'Resume sync':'Stop sync',()=>aiPatch(id,{syncOn:v.syncOn===false}),v.syncOn===false?'#1f6b45':'#b3261e'));
-      td.appendChild(mkBtn(v.pasteOn===true?'Paste: ON':'Paste: OFF',()=>aiPatch(id,{pasteOn:v.pasteOn!==true,pasteTs:Date.now()}),v.pasteOn===true?'#1f6b45':'#b3261e'));
-      td.appendChild(mkBtn(v.apiKey?'AI key':'+ AI key',()=>openAi(id),'#1f6b45'));
-      if(v.apiKey) td.appendChild(mkBtn(v.apiOn===false?'Resume AI':'Stop AI',()=>aiPatch(id,{apiOn:v.apiOn===false,apiTs:Date.now()}),v.apiOn===false?'#1f6b45':'#b3261e'));
-      td.appendChild(mkBtn(v.blocked?'Unblock':'Block',()=>{
+      bx.appendChild(mkBtn(v.syncUrl?'Sync':'+ Sync',()=>openSync(id),'#1f6b45'));
+      if(v.syncUrl) bx.appendChild(mkBtn(v.syncOn===false?'Resume sync':'Stop sync',()=>aiPatch(id,{syncOn:v.syncOn===false}),v.syncOn===false?'#1f6b45':'#b3261e'));
+      bx.appendChild(mkBtn(v.pasteOn===true?'Paste: ON':'Paste: OFF',()=>aiPatch(id,{pasteOn:v.pasteOn!==true,pasteTs:Date.now()}),v.pasteOn===true?'#1f6b45':'#b3261e'));
+      bx.appendChild(mkBtn(v.apiKey?'AI key':'+ AI key',()=>openAi(id),'#1f6b45'));
+      if(v.apiKey) bx.appendChild(mkBtn(v.apiOn===false?'Resume AI':'Stop AI',()=>aiPatch(id,{apiOn:v.apiOn===false,apiTs:Date.now()}),v.apiOn===false?'#1f6b45':'#b3261e'));
+      bx.appendChild(mkBtn(v.blocked?'Unblock':'Block',()=>{
         if(!v.blocked&&!confirm('Block device '+id+(v.name?' ('+v.name+')':'')+'? The app on that device will stop working.'))return;
         setBlockDev(id,!v.blocked);
       },v.blocked?'':'#b3261e'));
-      if(!v.active) td.appendChild(mkBtn('+ Days',()=>askExtend([id],id)));
-      td.appendChild(mkBtn('Delete',async()=>{
+      if(!v.active) bx.appendChild(mkBtn('+ Days',()=>askExtend([id],id)));
+      bx.appendChild(mkBtn('Delete',async()=>{
         if(!confirm('Delete Device '+(ix+1)+' ('+id+')? Its trial, block and key record are removed. If that phone opens the app again it will register again.'))return;
         try{if(v.fp)await adm('/fp/'+v.fp,'DELETE');await adm('/devices/'+id,'DELETE')}catch(e){fail(e)}
       },'#b3261e'));
-      if(ids.length>1) td.appendChild(mkBtn('Keep only this',async()=>{
+      if(ids.length>1) bx.appendChild(mkBtn('Keep only this',async()=>{
         const others=ids.filter(x=>x!==id);
         if(!confirm('Keep Device '+(ix+1)+' ('+id+') and DELETE the other '+others.length+' ID(s): '+others.join(', ')+'?'))return;
         try{await Promise.all(others.map(async o=>{const w=DEV[o]||{};if(w.fp)await adm('/fp/'+w.fp,'DELETE');await adm('/devices/'+o,'DELETE')}))}catch(e){fail(e)}
